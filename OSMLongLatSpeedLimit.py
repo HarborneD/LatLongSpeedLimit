@@ -4,39 +4,6 @@ import xml.etree.ElementTree as ET
 
 import json
 
-# camera_long2 = "5.6293520"
-
-# camera_lat2 = "50.5350159"
-
-
-# camera_long = "5.6276237"
-
-# camera_lat = "50.5346803"
-
-# api_url = 'http://www.overpass-api.de/api/xapi?*[maxspeed=*][bbox={long1},{lat1},{long2},{lat2}]'
-
-# api_request = api_url.format(long1=camera_long,  lat1=camera_lat,long2=camera_long2,  lat2=camera_lat2)
-
-# print(api_request)
-
-# speed_limits = urllib.request.urlretrieve(api_request)
-# print(speed_limits)
-
-# road_speeds = {}
-
-# tree = ET.parse(speed_limits[0])
-# root = tree.getroot()
-
-# for way in root.findall('way'):
-# 	way_tags = way.findall('tag')
-# 	max_speeds = [tag.attrib.get('v') for tag in way_tags if tag.attrib.get('k') == "maxspeed"]
-# 	names = [tag.attrib.get('v') for tag in way_tags if tag.attrib.get('k') == "name"]
-# 	road_speeds[names[0]] = max_speeds[0]	
-
-# print(road_speeds)
-
-
-
 def XMLfromOSMSpeedCall(long1,lat1,long2,lat2):
 	api_url = 'http://www.overpass-api.de/api/xapi?*[maxspeed=*][bbox={long1},{lat1},{long2},{lat2}]'
 
@@ -61,24 +28,42 @@ def JSONfromTFLCall(camera_id):
 	 
 	return d
 
-def OSMLongLatSpeedLimit(cam_long,cam_lat):
-	box_long = str(float(cam_long) - 0.0002)
+def OSMLongLatSpeedLimit(cam_long,cam_lat,start_box_size = 0.00000002, step_dist =  0.0001,attempt_count = 10 ):
+	
+	ways = []
 
-	box_lat = str(float(cam_lat) - 0.0002)
+	step = start_box_size
+	while ((len(ways) != 1) and attempt_count > 0 and step > 0):
+		box_long = str(float(cam_long) - step)
 
-	box_long2 = str(float(cam_long) + 0.0002)
+		box_lat = str(float(cam_lat) - step)
 
-	box_lat2 = str(float(cam_lat) + 0.0002)
+		box_long2 = str(float(cam_long) + step)
 
-	tree = XMLfromOSMSpeedCall(box_long,box_lat,box_long2,box_lat2)
+		box_lat2 = str(float(cam_lat) + step)
 
-	road_speeds = {}
+		tree = XMLfromOSMSpeedCall(box_long,box_lat,box_long2,box_lat2)
 
-	unknown_counter = 0
-	for way in tree.getroot().findall('way'):
+		road_speeds = {}
+
+		unknown_counter = 0
+
+		ways = tree.getroot().findall('way')
+
+		print(len(ways))
+		if(len(ways) != 1):
+			if(len(ways) > 1):
+				step -= step_dist
+			else:
+				step += step_dist
+
+		attempt_count -= 1
+
+	for way in ways:
 		way_tags = way.findall('tag')
 		for tag in way_tags:
-			print(tag.attrib.get('k'),tag.attrib.get('v'))
+			pass
+			#print(tag.attrib.get('k'),tag.attrib.get('v'))
 
 		max_speeds = [tag.attrib.get('v') for tag in way_tags if tag.attrib.get('k') == "maxspeed"]
 		names = [tag.attrib.get('v') for tag in way_tags if tag.attrib.get('k') == "name"]
@@ -96,14 +81,6 @@ def OSMLongLatSpeedLimit(cam_long,cam_lat):
 			road_speeds[name] = -1
 	return road_speeds
 
-
-#camera_long = "5.6293520"
-
-#camera_lat = "50.5350159"
-
-#print(OSMLongLatSpeedLimit(camera_long,camera_lat) )
-
-
 def LongLatFromTFLid(tfl_id):
 	json = JSONfromTFLCall(tfl_id)
 
@@ -112,7 +89,8 @@ def LongLatFromTFLid(tfl_id):
 
 	return cam_long,cam_lat
 
-camera_id = "01460"
-camera_long,camera_lat = LongLatFromTFLid(camera_id)
+if(__name__ == "__main__"):
+	camera_id = "01460"
+	camera_long,camera_lat = LongLatFromTFLid(camera_id)
 
-print(OSMLongLatSpeedLimit(camera_long,camera_lat))
+	print(OSMLongLatSpeedLimit(camera_long,camera_lat))
